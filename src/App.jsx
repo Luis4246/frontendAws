@@ -7,6 +7,21 @@ function App() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
+  const [modoRegistro, setModoRegistro] = useState(false);
+
+  const [registroCliente, setRegistroCliente] = useState({
+    username: "",
+    email: "",
+    password: "",
+  });
+
+  const [registroUsuario, setRegistroUsuario] = useState({
+    username: "",
+    email: "",
+    password: "",
+    rol: "cliente",
+  });
+
   const [usuario, setUsuario] = useState(null);
   const [productos, setProductos] = useState([]);
   const [carrito, setCarrito] = useState([]);
@@ -68,6 +83,64 @@ function App() {
     }
   };
 
+  const registrarClientePublico = async (e) => {
+    e.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(`${API_URL}/register/`, {
+        username: registroCliente.username,
+        email: registroCliente.email,
+        password: registroCliente.password,
+      });
+
+      setMensaje("Cliente registrado correctamente. Ahora puedes iniciar sesión.");
+
+      setRegistroCliente({
+        username: "",
+        email: "",
+        password: "",
+      });
+
+      setModoRegistro(false);
+    } catch (error) {
+      console.error(error);
+      setError("No se pudo registrar el cliente");
+    }
+  };
+
+  const registrarUsuarioDesdeOperador = async (e) => {
+    e.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/register/`,
+        {
+          username: registroUsuario.username,
+          email: registroUsuario.email,
+          password: registroUsuario.password,
+          rol: registroUsuario.rol,
+        },
+        axiosAuth()
+      );
+
+      setMensaje("Usuario registrado correctamente");
+
+      setRegistroUsuario({
+        username: "",
+        email: "",
+        password: "",
+        rol: "cliente",
+      });
+    } catch (error) {
+      console.error(error);
+      setError("No se pudo registrar el usuario");
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
@@ -80,6 +153,7 @@ function App() {
     setVistaCliente("productos");
     setError("");
     setMensaje("");
+    setModoRegistro(false);
   };
 
   const crearProducto = async (e) => {
@@ -208,35 +282,124 @@ function App() {
       <div className="bg-dark min-vh-100 d-flex align-items-center justify-content-center">
         <div className="card shadow p-4" style={{ width: "420px" }}>
           <h2 className="text-center mb-4">Ecommerce AWS</h2>
-          <p className="text-center text-muted">Inicia sesión para continuar</p>
 
-          <form onSubmit={login}>
-            <div className="mb-3">
-              <label className="form-label">Usuario</label>
-              <input
-                className="form-control"
-                type="text"
-                placeholder="Ej: cliente1"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
+          {!modoRegistro ? (
+            <>
+              <p className="text-center text-muted">
+                Inicia sesión para continuar
+              </p>
 
-            <div className="mb-3">
-              <label className="form-label">Contraseña</label>
-              <input
-                className="form-control"
-                type="password"
-                placeholder="Ej: 123456"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+              {mensaje && <div className="alert alert-success">{mensaje}</div>}
 
-            {error && <div className="alert alert-danger">{error}</div>}
+              <form onSubmit={login}>
+                <div className="mb-3">
+                  <label className="form-label">Usuario</label>
+                  <input
+                    className="form-control"
+                    type="text"
+                    placeholder="Ej: cliente1"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
 
-            <button className="btn btn-primary w-100">Ingresar</button>
-          </form>
+                <div className="mb-3">
+                  <label className="form-label">Contraseña</label>
+                  <input
+                    className="form-control"
+                    type="password"
+                    placeholder="Ej: 123456"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+
+                {error && <div className="alert alert-danger">{error}</div>}
+
+                <button className="btn btn-primary w-100">Ingresar</button>
+              </form>
+
+              <button
+                className="btn btn-outline-light w-100 mt-3"
+                onClick={() => {
+                  setModoRegistro(true);
+                  setError("");
+                  setMensaje("");
+                }}
+              >
+                Registrarse como cliente
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-center text-muted">Registro de cliente</p>
+
+              <form onSubmit={registrarClientePublico}>
+                <div className="mb-3">
+                  <label className="form-label">Usuario</label>
+                  <input
+                    className="form-control"
+                    type="text"
+                    placeholder="Ej: cliente2"
+                    value={registroCliente.username}
+                    onChange={(e) =>
+                      setRegistroCliente({
+                        ...registroCliente,
+                        username: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Email</label>
+                  <input
+                    className="form-control"
+                    type="email"
+                    placeholder="Ej: cliente2@gmail.com"
+                    value={registroCliente.email}
+                    onChange={(e) =>
+                      setRegistroCliente({
+                        ...registroCliente,
+                        email: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Contraseña</label>
+                  <input
+                    className="form-control"
+                    type="password"
+                    placeholder="Ej: 123456"
+                    value={registroCliente.password}
+                    onChange={(e) =>
+                      setRegistroCliente({
+                        ...registroCliente,
+                        password: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                {error && <div className="alert alert-danger">{error}</div>}
+
+                <button className="btn btn-primary w-100">Crear cuenta</button>
+              </form>
+
+              <button
+                className="btn btn-outline-secondary w-100 mt-3"
+                onClick={() => {
+                  setModoRegistro(false);
+                  setError("");
+                  setMensaje("");
+                }}
+              >
+                Volver al login
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -268,6 +431,9 @@ function App() {
             crearProducto={crearProducto}
             mensaje={mensaje}
             error={error}
+            registroUsuario={registroUsuario}
+            setRegistroUsuario={setRegistroUsuario}
+            registrarUsuarioDesdeOperador={registrarUsuarioDesdeOperador}
           />
         ) : (
           <PanelCliente
@@ -483,6 +649,9 @@ function PanelOperador({
   crearProducto,
   mensaje,
   error,
+  registroUsuario,
+  setRegistroUsuario,
+  registrarUsuarioDesdeOperador,
 }) {
   return (
     <div>
@@ -498,13 +667,77 @@ function PanelOperador({
         </p>
       </div>
 
+      {mensaje && <div className="alert alert-success">{mensaje}</div>}
+      {error && <div className="alert alert-danger">{error}</div>}
+
       <div className="row g-4">
-        <div className="col-md-5">
+        <div className="col-md-4">
+          <div className="card shadow-sm p-4">
+            <h3 className="mb-3 text-center">Registrar usuario</h3>
+
+            <form onSubmit={registrarUsuarioDesdeOperador}>
+              <input
+                className="form-control mb-3"
+                placeholder="Usuario"
+                value={registroUsuario.username}
+                onChange={(e) =>
+                  setRegistroUsuario({
+                    ...registroUsuario,
+                    username: e.target.value,
+                  })
+                }
+              />
+
+              <input
+                className="form-control mb-3"
+                type="email"
+                placeholder="Email"
+                value={registroUsuario.email}
+                onChange={(e) =>
+                  setRegistroUsuario({
+                    ...registroUsuario,
+                    email: e.target.value,
+                  })
+                }
+              />
+
+              <input
+                className="form-control mb-3"
+                type="password"
+                placeholder="Contraseña"
+                value={registroUsuario.password}
+                onChange={(e) =>
+                  setRegistroUsuario({
+                    ...registroUsuario,
+                    password: e.target.value,
+                  })
+                }
+              />
+
+              <select
+                className="form-select mb-3"
+                value={registroUsuario.rol}
+                onChange={(e) =>
+                  setRegistroUsuario({
+                    ...registroUsuario,
+                    rol: e.target.value,
+                  })
+                }
+              >
+                <option value="cliente">Cliente</option>
+                <option value="operador">Operador</option>
+              </select>
+
+              <button className="btn btn-success w-100">
+                Registrar usuario
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="col-md-4">
           <div className="card shadow-sm p-4">
             <h3 className="mb-3 text-center">Crear producto</h3>
-
-            {mensaje && <div className="alert alert-success">{mensaje}</div>}
-            {error && <div className="alert alert-danger">{error}</div>}
 
             <form onSubmit={crearProducto}>
               <input
@@ -562,13 +795,13 @@ function PanelOperador({
           </div>
         </div>
 
-        <div className="col-md-7">
+        <div className="col-md-4">
           <div className="card shadow-sm p-4">
             <h3 className="mb-4">Productos registrados</h3>
 
             <div className="row g-3">
               {productos.map((producto) => (
-                <div className="col-md-6" key={producto.id}>
+                <div className="col-12" key={producto.id}>
                   <div className="border rounded p-3 h-100">
                     <h5>{producto.nombre}</h5>
                     <p>{producto.descripcion}</p>
