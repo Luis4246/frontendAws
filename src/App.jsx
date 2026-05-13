@@ -179,6 +179,27 @@ function App() {
     }
   };
 
+  const eliminarProducto = async (productoId) => {
+    const confirmar = window.confirm(
+      "¿Seguro que quieres eliminar este producto?"
+    );
+
+    if (!confirmar) return;
+
+    setMensaje("");
+    setError("");
+
+    try {
+      await axios.delete(`${API_URL}/productos/${productoId}/`, axiosAuth());
+
+      setMensaje("Producto eliminado correctamente");
+      await cargarProductos();
+    } catch (error) {
+      console.error(error);
+      setError("No se pudo eliminar el producto");
+    }
+  };
+
   const agregarAlCarrito = (producto) => {
     setMensaje("");
     setError("");
@@ -429,6 +450,7 @@ function App() {
             nuevoProducto={nuevoProducto}
             setNuevoProducto={setNuevoProducto}
             crearProducto={crearProducto}
+            eliminarProducto={eliminarProducto}
             mensaje={mensaje}
             error={error}
             registroUsuario={registroUsuario}
@@ -647,6 +669,7 @@ function PanelOperador({
   nuevoProducto,
   setNuevoProducto,
   crearProducto,
+  eliminarProducto,
   mensaje,
   error,
   registroUsuario,
@@ -658,12 +681,8 @@ function PanelOperador({
       <div className="card shadow-sm p-4 mb-4 text-center">
         <h1>Panel Operador</h1>
 
-        <p className="mb-1">
-          <strong>Usuario:</strong> {usuario.username}
-        </p>
-
         <p className="mb-0">
-          <strong>Email:</strong> {usuario.email}
+          <strong>Usuario:</strong> {usuario.username}
         </p>
       </div>
 
@@ -811,9 +830,22 @@ function PanelOperador({
                     <p>
                       <strong>Stock:</strong> {producto.stock}
                     </p>
+
+                    <button
+                      className="btn btn-danger w-100 mt-2"
+                      onClick={() => eliminarProducto(producto.id)}
+                    >
+                      Eliminar producto
+                    </button>
                   </div>
                 </div>
               ))}
+
+              {productos.length === 0 && (
+                <div className="alert alert-info">
+                  No hay productos registrados.
+                </div>
+              )}
             </div>
           </div>
         </div>
