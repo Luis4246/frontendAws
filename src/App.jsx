@@ -28,6 +28,10 @@ function App() {
 
   const [vistaCliente, setVistaCliente] = useState("productos");
 
+  const [vistaOperador, setVistaOperador] = useState("panel");
+  const [eventos, setEventos] = useState([]);
+  const [filtroEvento, setFiltroEvento] = useState("");
+
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
@@ -52,6 +56,25 @@ function App() {
       setProductos(response.data);
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const cargarEventos = async () => {
+    setError("");
+    setMensaje("");
+
+    try {
+      let url = `${API_URL}/eventos-dynamo/`;
+
+      if (filtroEvento) {
+        url += `?evento=${filtroEvento}`;
+      }
+
+      const response = await axios.get(url, axiosAuth());
+      setEventos(response.data);
+    } catch (error) {
+      console.error(error);
+      setError("No se pudieron cargar los eventos de DynamoDB");
     }
   };
 
@@ -151,6 +174,9 @@ function App() {
     setProductos([]);
     setCarrito([]);
     setVistaCliente("productos");
+    setVistaOperador("panel");
+    setEventos([]);
+    setFiltroEvento("");
     setError("");
     setMensaje("");
     setModoRegistro(false);
@@ -341,7 +367,7 @@ function App() {
               </form>
 
               <button
-                className="btn btn-outline-light w-100 mt-3"
+                className="btn btn-outline-primary w-100 mt-3"
                 onClick={() => {
                   setModoRegistro(true);
                   setError("");
@@ -456,6 +482,12 @@ function App() {
             registroUsuario={registroUsuario}
             setRegistroUsuario={setRegistroUsuario}
             registrarUsuarioDesdeOperador={registrarUsuarioDesdeOperador}
+            vistaOperador={vistaOperador}
+            setVistaOperador={setVistaOperador}
+            eventos={eventos}
+            filtroEvento={filtroEvento}
+            setFiltroEvento={setFiltroEvento}
+            cargarEventos={cargarEventos}
           />
         ) : (
           <PanelCliente
@@ -675,6 +707,12 @@ function PanelOperador({
   registroUsuario,
   setRegistroUsuario,
   registrarUsuarioDesdeOperador,
+  vistaOperador,
+  setVistaOperador,
+  eventos,
+  filtroEvento,
+  setFiltroEvento,
+  cargarEventos,
 }) {
   return (
     <div>
@@ -686,170 +724,260 @@ function PanelOperador({
         </p>
       </div>
 
+      <div className="d-flex justify-content-center gap-2 mb-4">
+        <button
+          className="btn btn-outline-primary"
+          onClick={() => setVistaOperador("panel")}
+        >
+          Panel principal
+        </button>
+
+        <button
+          className="btn btn-warning"
+          onClick={() => setVistaOperador("eventos")}
+        >
+          Visualizar eventos
+        </button>
+      </div>
+
       {mensaje && <div className="alert alert-success">{mensaje}</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
-      <div className="row g-4">
-        <div className="col-md-4">
-          <div className="card shadow-sm p-4">
-            <h3 className="mb-3 text-center">Registrar usuario</h3>
+      {vistaOperador === "eventos" && (
+        <div className="card shadow-sm p-4">
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <h3>Consultar eventos de DynamoDB</h3>
 
-            <form onSubmit={registrarUsuarioDesdeOperador}>
-              <input
-                className="form-control mb-3"
-                placeholder="Usuario"
-                value={registroUsuario.username}
-                onChange={(e) =>
-                  setRegistroUsuario({
-                    ...registroUsuario,
-                    username: e.target.value,
-                  })
-                }
-              />
+            <button
+              className="btn btn-outline-secondary"
+              onClick={() => setVistaOperador("panel")}
+            >
+              Volver
+            </button>
+          </div>
 
-              <input
-                className="form-control mb-3"
-                type="email"
-                placeholder="Email"
-                value={registroUsuario.email}
-                onChange={(e) =>
-                  setRegistroUsuario({
-                    ...registroUsuario,
-                    email: e.target.value,
-                  })
-                }
-              />
-
-              <input
-                className="form-control mb-3"
-                type="password"
-                placeholder="Contraseña"
-                value={registroUsuario.password}
-                onChange={(e) =>
-                  setRegistroUsuario({
-                    ...registroUsuario,
-                    password: e.target.value,
-                  })
-                }
-              />
-
+          <div className="row g-3 mb-4">
+            <div className="col-md-8">
               <select
-                className="form-select mb-3"
-                value={registroUsuario.rol}
-                onChange={(e) =>
-                  setRegistroUsuario({
-                    ...registroUsuario,
-                    rol: e.target.value,
-                  })
-                }
+                className="form-select"
+                value={filtroEvento}
+                onChange={(e) => setFiltroEvento(e.target.value)}
               >
-                <option value="cliente">Cliente</option>
-                <option value="operador">Operador</option>
+                <option value="">Todos los eventos</option>
+                <option value="CREAR_PEDIDO">Pedidos creados</option>
+                <option value="CREAR_PRODUCTO">Productos creados</option>
+                <option value="ELIMINAR_PRODUCTO">Productos eliminados</option>
               </select>
+            </div>
 
-              <button className="btn btn-success w-100">
-                Registrar usuario
+            <div className="col-md-4">
+              <button className="btn btn-primary w-100" onClick={cargarEventos}>
+                Consultar
               </button>
-            </form>
+            </div>
           </div>
+
+          {eventos.length === 0 ? (
+            <div className="alert alert-info">
+              Selecciona un tipo de evento y presiona consultar.
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-bordered table-striped">
+                <thead>
+                  <tr>
+                    <th>Evento</th>
+                    <th>Usuario</th>
+                    <th>Descripción</th>
+                    <th>Fecha</th>
+                    <th>Metadata</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {eventos.map((evento, index) => (
+                    <tr key={index}>
+                      <td>{evento.evento}</td>
+                      <td>{evento.userId}</td>
+                      <td>{evento.descripcion}</td>
+                      <td>{evento.Timestamp || evento.timestamp}</td>
+                      <td>
+                        <pre className="mb-0">
+                          {JSON.stringify(evento.metadata, null, 2)}
+                        </pre>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
+      )}
 
-        <div className="col-md-4">
-          <div className="card shadow-sm p-4">
-            <h3 className="mb-3 text-center">Crear producto</h3>
+      {vistaOperador === "panel" && (
+        <div className="row g-4">
+          <div className="col-md-4">
+            <div className="card shadow-sm p-4">
+              <h3 className="mb-3 text-center">Registrar usuario</h3>
 
-            <form onSubmit={crearProducto}>
-              <input
-                className="form-control mb-3"
-                placeholder="Nombre"
-                value={nuevoProducto.nombre}
-                onChange={(e) =>
-                  setNuevoProducto({
-                    ...nuevoProducto,
-                    nombre: e.target.value,
-                  })
-                }
-              />
+              <form onSubmit={registrarUsuarioDesdeOperador}>
+                <input
+                  className="form-control mb-3"
+                  placeholder="Usuario"
+                  value={registroUsuario.username}
+                  onChange={(e) =>
+                    setRegistroUsuario({
+                      ...registroUsuario,
+                      username: e.target.value,
+                    })
+                  }
+                />
 
-              <textarea
-                className="form-control mb-3"
-                placeholder="Descripción"
-                value={nuevoProducto.descripcion}
-                onChange={(e) =>
-                  setNuevoProducto({
-                    ...nuevoProducto,
-                    descripcion: e.target.value,
-                  })
-                }
-              />
+                <input
+                  className="form-control mb-3"
+                  type="email"
+                  placeholder="Email"
+                  value={registroUsuario.email}
+                  onChange={(e) =>
+                    setRegistroUsuario({
+                      ...registroUsuario,
+                      email: e.target.value,
+                    })
+                  }
+                />
 
-              <input
-                className="form-control mb-3"
-                type="number"
-                placeholder="Precio"
-                value={nuevoProducto.precio}
-                onChange={(e) =>
-                  setNuevoProducto({
-                    ...nuevoProducto,
-                    precio: e.target.value,
-                  })
-                }
-              />
+                <input
+                  className="form-control mb-3"
+                  type="password"
+                  placeholder="Contraseña"
+                  value={registroUsuario.password}
+                  onChange={(e) =>
+                    setRegistroUsuario({
+                      ...registroUsuario,
+                      password: e.target.value,
+                    })
+                  }
+                />
 
-              <input
-                className="form-control mb-3"
-                type="number"
-                placeholder="Stock"
-                value={nuevoProducto.stock}
-                onChange={(e) =>
-                  setNuevoProducto({
-                    ...nuevoProducto,
-                    stock: e.target.value,
-                  })
-                }
-              />
+                <select
+                  className="form-select mb-3"
+                  value={registroUsuario.rol}
+                  onChange={(e) =>
+                    setRegistroUsuario({
+                      ...registroUsuario,
+                      rol: e.target.value,
+                    })
+                  }
+                >
+                  <option value="cliente">Cliente</option>
+                  <option value="operador">Operador</option>
+                </select>
 
-              <button className="btn btn-primary w-100">Crear producto</button>
-            </form>
+                <button className="btn btn-success w-100">
+                  Registrar usuario
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
 
-        <div className="col-md-4">
-          <div className="card shadow-sm p-4">
-            <h3 className="mb-4">Productos registrados</h3>
+          <div className="col-md-4">
+            <div className="card shadow-sm p-4">
+              <h3 className="mb-3 text-center">Crear producto</h3>
 
-            <div className="row g-3">
-              {productos.map((producto) => (
-                <div className="col-12" key={producto.id}>
-                  <div className="border rounded p-3 h-100">
-                    <h5>{producto.nombre}</h5>
-                    <p>{producto.descripcion}</p>
-                    <p>
-                      <strong>Precio:</strong> ${producto.precio}
-                    </p>
-                    <p>
-                      <strong>Stock:</strong> {producto.stock}
-                    </p>
+              <form onSubmit={crearProducto}>
+                <input
+                  className="form-control mb-3"
+                  placeholder="Nombre"
+                  value={nuevoProducto.nombre}
+                  onChange={(e) =>
+                    setNuevoProducto({
+                      ...nuevoProducto,
+                      nombre: e.target.value,
+                    })
+                  }
+                />
 
-                    <button
-                      className="btn btn-danger w-100 mt-2"
-                      onClick={() => eliminarProducto(producto.id)}
-                    >
-                      Eliminar producto
-                    </button>
+                <textarea
+                  className="form-control mb-3"
+                  placeholder="Descripción"
+                  value={nuevoProducto.descripcion}
+                  onChange={(e) =>
+                    setNuevoProducto({
+                      ...nuevoProducto,
+                      descripcion: e.target.value,
+                    })
+                  }
+                />
+
+                <input
+                  className="form-control mb-3"
+                  type="number"
+                  placeholder="Precio"
+                  value={nuevoProducto.precio}
+                  onChange={(e) =>
+                    setNuevoProducto({
+                      ...nuevoProducto,
+                      precio: e.target.value,
+                    })
+                  }
+                />
+
+                <input
+                  className="form-control mb-3"
+                  type="number"
+                  placeholder="Stock"
+                  value={nuevoProducto.stock}
+                  onChange={(e) =>
+                    setNuevoProducto({
+                      ...nuevoProducto,
+                      stock: e.target.value,
+                    })
+                  }
+                />
+
+                <button className="btn btn-primary w-100">Crear producto</button>
+              </form>
+            </div>
+          </div>
+
+          <div className="col-md-4">
+            <div className="card shadow-sm p-4">
+              <h3 className="mb-4">Productos registrados</h3>
+
+              <div className="row g-3">
+                {productos.map((producto) => (
+                  <div className="col-12" key={producto.id}>
+                    <div className="border rounded p-3 h-100">
+                      <h5>{producto.nombre}</h5>
+                      <p>{producto.descripcion}</p>
+                      <p>
+                        <strong>Precio:</strong> ${producto.precio}
+                      </p>
+                      <p>
+                        <strong>Stock:</strong> {producto.stock}
+                      </p>
+
+                      <button
+                        className="btn btn-danger w-100 mt-2"
+                        onClick={() => eliminarProducto(producto.id)}
+                      >
+                        Eliminar producto
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
-              {productos.length === 0 && (
-                <div className="alert alert-info">
-                  No hay productos registrados.
-                </div>
-              )}
+                {productos.length === 0 && (
+                  <div className="alert alert-info">
+                    No hay productos registrados.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
